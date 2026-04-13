@@ -131,6 +131,12 @@ const Store = (() => {
         } else if (key === 'reports') {
           // Explicit requirement: Report Logs logic 
           for (const r of val) { await sbClient.from('reports').upsert(r); }
+        } else if (key === 'posts') {
+          for (const p of val) { await sbClient.from('posts').upsert({ id: p.id, userId: p.userId, category: p.category, title: p.title, content: p.body, image: p.image, likes: p.likes, commentsCount: p.comments, likedBy: p.likedBy || [], created_at: p.date }); }
+        } else if (key === 'comments') {
+          for (const c of val) { await sbClient.from('comments').upsert(c); }
+        } else if (key === 'announcements') {
+          for (const a of val) { await sbClient.from('announcements').upsert(a); }
         } else {
           // Keep generic store logic for the rest as decided
           await sbClient.from('store').upsert({ id: key, data: JSON.stringify(val) });
@@ -165,8 +171,23 @@ const Store = (() => {
        }
     });
 
-    // Fetch initial store subsets
-    ['posts', 'comments', 'announcements', 'auditLog', 'notifications'].forEach(k => {
+    ['posts', 'comments', 'announcements', 'likes'].forEach(cat => {
+        sbClient.from(cat).select('*').then(({ data, error }) => {
+            if (error) { console.error(`Fetch error for ${cat}:`, error); return; }
+            if (data) { 
+                if (cat === 'comments') console.log('COMMENTS FETCHED:', data);
+                if (cat === 'posts') data = data.map(p => ({...p, body: p.content || p.body, comments: p.commentsCount ?? p.comments, date: p.created_at || p.date, likedBy: p.likedBy || [] }));
+                if (cat === 'announcements') data = data.map(a => ({...a, subject: a.title || a.subject, body: a.content || a.body, authorId: a.author || a.authorId, date: a.created_at || a.date}));
+                if (cat === 'comments')      data = data.map(c => ({...c, postId: c.postId, userId: c.userId, body: c.content || c.body, date: c.created_at || c.date}));
+                if (cat === 'likes')         data = data.map(l => ({...l, postId: l.postId || l.postid, userId: l.userId || l.userid}));
+                _localSet(cat, data); 
+                window.dispatchEvent(new CustomEvent('ps_db_updated', { detail: cat }));
+            }
+        });
+    });
+
+    // Fetch initial store subsets (legacy non-relational values)
+    ['auditLog', 'notifications'].forEach(k => {
        sbClient.from('store').select('*').eq('id', k).maybeSingle().then(({ data, error }) => {
            if (!error && data && data.data) {
               try { _localSet(k, JSON.parse(data.data)); } catch(e) {}
@@ -191,6 +212,37 @@ const Store = (() => {
           sbClient.from('reports').select('*').then(({ data }) => {
               if (data) _localSet('reports', data);
               window.dispatchEvent(new CustomEvent('ps_db_updated', { detail: 'reports' }));
+          });
+      }).subscribe();
+
+    sbClient.channel('public:dynamic')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, payload => {
+          sbClient.from('posts').select('*').then(({ data }) => {
+              if (data) _localSet('posts', data.map(p => ({...p, body: p.content || p.body, comments: p.commentsCount ?? p.comments, date: p.created_at || p.date, likedBy: p.likedBy || [] }))); window.dispatchEvent(new CustomEvent('ps_db_updated', { detail: 'posts' }));
+          });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, payload => {
+          sbClient.from('comments').select('*').then(({ data }) => {
+              if (data) {
+                  data = data.map(c => ({...c, postId: c.postId, userId: c.userId, body: c.content || c.body, date: c.created_at || c.date}));
+                  _localSet('comments', data); window.dispatchEvent(new CustomEvent('ps_db_updated', { detail: 'comments' }));
+              }
+          });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, payload => {
+          sbClient.from('likes').select('*').then(({ data }) => {
+              if (data) {
+                  data = data.map(l => ({...l, postId: l.postId || l.postid, userId: l.userId || l.userid}));
+                  _localSet('likes', data); window.dispatchEvent(new CustomEvent('ps_db_updated', { detail: 'likes' }));
+              }
+          });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, payload => {
+          sbClient.from('announcements').select('*').then(({ data }) => {
+              if (data) {
+                  data = data.map(a => ({...a, subject: a.title || a.subject, body: a.content || a.body, authorId: a.author || a.authorId, date: a.created_at || a.date}));
+                  _localSet('announcements', data); window.dispatchEvent(new CustomEvent('ps_db_updated', { detail: 'announcements' }));
+              }
           });
       }).subscribe();
 
@@ -713,6 +765,13 @@ ytVideos.forEach((_, i) => {
 /* ─────────────────────────────────────────────
    ANNOUNCEMENTS RENDER
 ───────────────────────────────────────────── */
+let showAllAnnouncements = false;
+const stripRichHTML = (html) => {
+  const tmp = document.createElement("DIV");
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || "";
+};
+
 const renderAnnouncements = () => {
   const list = document.getElementById('announcementsList');
   const announcements = Store.get('announcements');
@@ -721,21 +780,41 @@ const renderAnnouncements = () => {
     list.innerHTML = '<p style="color:var(--mid);text-align:center;padding:3rem 0;">No announcements yet. Check back soon!</p>';
     return;
   }
-  list.innerHTML = announcements.slice().reverse().map(a => {
-    const author = users.find(u => u.id === a.authorId);
+
+  const reversed = announcements.slice().reverse();
+  const visible = showAllAnnouncements ? reversed : reversed.slice(0, 3);
+  
+  let htmlOutput = visible.map(a => {
+    const author = users.find(u => u.username === a.authorId);
     const date = new Date(a.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const userRole = author && author.role === 'owner' ? 'Owner' : 'Staff';
+    
+    const plainText = stripRichHTML(a.body);
+    const isTruncated = plainText.length > 200;
+    const previewBody = isTruncated ? plainText.slice(0, 200) + '...' : plainText;
+
     return `
-      <div class="announcement-card reveal">
+      <div class="announcement-card reveal" style="cursor: pointer;" onclick="openViewAnnouncement('${sanitize(a.id)}')">
         <div class="announcement-tag">ANNOUNCEMENT</div>
         <div class="announcement-title">${sanitize(a.subject)}</div>
-        <div class="announcement-body">${sanitizeHTML(a.body)}</div>
+        <div class="announcement-body default-text-preview" style="color:var(--mid); font-size:1rem; margin-bottom:1rem; line-height:1.6;">${sanitize(previewBody)}</div>
         <div class="announcement-meta">
-          <span class="announcement-author-badge">${sanitize(author ? author.username : 'Staff')}</span>
+          <span class="announcement-author-badge">${userRole}</span>
           <span>${date}</span>
         </div>
       </div>
     `;
   }).join('');
+
+  if (!showAllAnnouncements && reversed.length > 3) {
+    htmlOutput += `
+      <div style="text-align:center; padding: 1rem 0;">
+        <button class="btn-secondary" onclick="showAllAnnouncements = true; renderAnnouncements();">View More Announcements</button>
+      </div>
+    `;
+  }
+
+  list.innerHTML = htmlOutput;
   list.querySelectorAll('.announcement-card').forEach(el => revealObserver.observe(el));
 };
 
@@ -785,6 +864,8 @@ const renderPostCards = () => {
     let author = users.find(u => u.username === p.userId);
     if (!author && p.authorName) author = { username: p.authorName, role: p.authorRole || 'member' };
     const date = new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const commentCount = (Store.get('comments') || []).filter(c => c.postId === p.id).length;
+    const likeCount = (Store.get('likes') || []).filter(l => l.postId === p.id).length;
     return `
       <div class="forum-post reveal" data-post-id="${sanitize(p.id)}" role="article" tabindex="0">
         <div class="post-header" style="cursor: pointer; z-index: 2; position: relative;" onclick="event.stopPropagation(); if(typeof openPublicProfile === 'function') openPublicProfile('${sanitize(p.userId)}');" title="View Profile">
@@ -803,8 +884,8 @@ const renderPostCards = () => {
           </div>
         </div>` : ''}
         <div class="post-footer">
-          <span class="post-action">❤️ ${sanitize(String(p.likes))}</span>
-          <span class="post-action">💬 ${sanitize(String(p.comments))}</span>
+          <span class="post-action">❤️ ${sanitize(String(likeCount))}</span>
+          <span class="post-action">💬 ${sanitize(String(commentCount))}</span>
         </div>
       </div>
     `;
@@ -851,6 +932,7 @@ setupModalClose('adminModal', 'adminModalClose');
 setupModalClose('adminAuthModal', 'adminAuthClose');
 setupModalClose('composerModal', 'composerClose');
 setupModalClose('viewPostModal', 'viewPostClose');
+setupModalClose('viewAnnouncementModal', 'viewAnnouncementClose');
 setupModalClose('profileModal', 'profileModalClose');
 setupModalClose('publicProfileModal', 'publicProfileClose');
 
@@ -899,16 +981,19 @@ window.openPublicProfile = (userId) => {
   if (userPosts.length === 0) {
     actList.innerHTML = '<p style="color:var(--mid);text-align:center;font-size:0.85rem;">No recent activity.</p>';
   } else {
-    actList.innerHTML = userPosts.map(p => `
+    actList.innerHTML = userPosts.map(p => {
+      const commentCount = (Store.get('comments') || []).filter(c => c.postId === p.id).length;
+      const likeCount = (Store.get('likes') || []).filter(l => l.postId === p.id).length;
+      return `
       <div class="activity-item" style="cursor: pointer;" onclick="closeModal('publicProfileModal'); openViewPost('${sanitize(p.id)}');">
         <div class="activity-title">${sanitize(p.title)}</div>
         <div class="activity-meta">
-          <span>❤️ ${p.likes}</span>
-          <span>💬 ${p.comments}</span>
+          <span>❤️ ${likeCount}</span>
+          <span>💬 ${commentCount}</span>
           <span>${new Date(p.date).toLocaleDateString()}</span>
         </div>
       </div>
-    `).join('');
+    `}).join('');
   }
 
   openModal('publicProfileModal');
@@ -1183,21 +1268,52 @@ document.getElementById('postSubmit').addEventListener('click', async () => {
     const btn = document.getElementById('postSubmit');
     btn.textContent = 'Uploading...';
     btn.disabled = true;
-    imageBase64 = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.readAsDataURL(file);
-    });
+    const compressImageBeforeBase64 = (f, maxWidth, maxHeight, quality) => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(f);
+        reader.onload = event => {
+          const img = new Image();
+          img.src = event.target.result;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width, height = img.height;
+            if (width > height) { if (width > maxWidth) { height = Math.round(height *= maxWidth / width); width = maxWidth; } } 
+            else { if (height > maxHeight) { width = Math.round(width *= maxHeight / height); height = maxHeight; } }
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+        };
+      });
+    };
+    imageBase64 = await compressImageBeforeBase64(file, 800, 800, 0.6);
     btn.textContent = 'Publish Post';
     btn.disabled = false;
   }
 
-  const posts = Store.get('posts');
-  const newPost = { id: 'p' + Date.now(), userId: session.username, authorName: session.username, authorRole: session.role, category, title, body, image: imageBase64, likes: 0, comments: 0, likedBy: [], date: new Date().toISOString() };
-  posts.push(newPost);
-  Store.set('posts', posts);
+  const newPost = { id: 'p' + Date.now(), userId: session.username, category, title, body, image: imageBase64, likes: 0, comments: 0, likedBy: [], date: new Date().toISOString() };
+  const newPostDB = { id: newPost.id, userId: newPost.userId, category: newPost.category, title: newPost.title, content: newPost.body, image: newPost.image, likes: 0, commentsCount: 0, likedBy: [], created_at: newPost.date };
+  
+  if (sbClient) {
+      const { error } = await sbClient.from('posts').insert([newPostDB]);
+      if (error) {
+          errEl.textContent = 'Database Error: ' + error.message;
+          errEl.removeAttribute('hidden');
+          return;
+      }
+      // Optimistic UI Update so we don't have to wait for websocket bounce back
+      const posts = Store.get('posts');
+      posts.push(newPost);
+      Store.set('posts', posts);
+  } else {
+      const posts = Store.get('posts');
+      posts.push(newPost);
+      Store.set('posts', posts);
+  }
   addAuditLog('Forum post created', session.username, title);
-
+  
   document.getElementById('postTitle').value = '';
   document.getElementById('postBody').value = '';
   if (imageInput) imageInput.value = '';
@@ -1238,16 +1354,40 @@ const customConfirm = (message, title = 'This page says') => {
 /* ─────────────────────────────────────────────
    VIEW POST
 ───────────────────────────────────────────── */
+window.openViewAnnouncement = (id) => {
+  const announcements = Store.get('announcements');
+  const a = announcements.find(x => x.id === id);
+  if (!a) return;
+  const users = Store.get('users');
+  const author = users.find(u => u.username === a.authorId);
+  const date = new Date(a.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const userRole = author && author.role === 'owner' ? 'Owner' : 'Staff';
+
+  document.getElementById('viewAnnouncementBody').innerHTML = `
+    <div class="announcement-tag" style="margin-bottom:1rem;">ANNOUNCEMENT</div>
+    <h2 style="font-size:1.6rem;margin-bottom:1rem;color:var(--white);">${sanitize(a.subject)}</h2>
+    <div class="post-header" style="margin-bottom:1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+      <span class="announcement-author-badge" style="margin-right:0.5rem;font-size:0.9rem;">${userRole}</span>
+      <span class="post-date" style="font-size:0.95rem;">${date}</span>
+    </div>
+    <div style="color:var(--off-white);line-height:1.7;font-size:1.05rem;" class="rich-content-render">${sanitizeHTML(a.body)}</div>
+  `;
+  openModal('viewAnnouncementModal');
+};
+
 const openViewPost = (postId) => {
   const posts = Store.get('posts');
   const users = Store.get('users');
   const post = posts.find(p => p.id === postId);
   if (!post) return;
+  const commentCount = (Store.get('comments') || []).filter(c => c.postId === post.id).length;
+  const likeCount = (Store.get('likes') || []).filter(l => l.postId === post.id).length;
   let author = users.find(u => u.id === post.userId);
   if (!author && post.authorName) author = { username: post.authorName, role: post.authorRole || 'member' };
   const date = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const session = Store.get('session');
+  const isLiked = session && (Store.get('likes') || []).some(l => l.postId === post.id && l.userId === session.userId);
   let canDelete = false;
   let canReport = false;
   if (session) {
@@ -1276,10 +1416,10 @@ const openViewPost = (postId) => {
     <p style="color:var(--mid);line-height:1.8;font-size:1rem;">${sanitize(post.body).replace(/\n/g, '<br>')}</p>
     ${post.image ? `<img src="${post.image}" alt="Attached image" style="margin-top:1.5rem;border-radius:var(--radius-lg);max-height:500px;width:100%;object-fit:cover;border:1px solid var(--border);" />` : ''}
     <div class="post-footer" style="margin-top:1.5rem;">
-      <button id="postModalLikeBtn" class="post-action ${post.likedBy && session && post.likedBy.includes(session.userId) ? 'liked' : ''}" style="background:transparent;border:none;cursor:pointer;">
-        ❤️ <span id="postModalLikeCount">${sanitize(String(post.likes))}</span>
+      <button id="postModalLikeBtn" class="post-action ${isLiked ? 'liked' : ''}" style="background:transparent;border:none;cursor:pointer;">
+        ❤️ <span id="postModalLikeCount">${sanitize(String(likeCount))}</span>
       </button>
-      <span class="post-action">💬 ${sanitize(String(post.comments))}</span>
+      <span class="post-action">💬 ${sanitize(String(commentCount))}</span>
     </div>
     
     <div class="comments-section" style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">
@@ -1364,30 +1504,43 @@ const openViewPost = (postId) => {
       const likeBtn = document.getElementById('postModalLikeBtn');
       const likeCount = document.getElementById('postModalLikeCount');
       if (likeBtn) {
-        likeBtn.addEventListener('click', () => {
+        likeBtn.addEventListener('click', async () => {
           let currentPosts = Store.get('posts');
           let currentPostIndex = currentPosts.findIndex(p => p.id === postId);
           if (currentPostIndex === -1) return;
           let currentPost = currentPosts[currentPostIndex];
 
-          if (!currentPost.likedBy) currentPost.likedBy = [];
+          let allLikes = Store.get('likes') || [];
+          const existingLikeIndex = allLikes.findIndex(l => l.postId === currentPost.id && l.userId === session.userId);
 
-          if (currentPost.likedBy.includes(session.userId)) {
-            currentPost.likedBy = currentPost.likedBy.filter(id => id !== session.userId);
-            currentPost.likes--;
+          if (existingLikeIndex !== -1) {
+            // Unlike
+            allLikes.splice(existingLikeIndex, 1);
             likeBtn.classList.remove('liked');
+            Store.set('likes', allLikes);
+            if(sbClient) {
+                const { error } = await sbClient.from('likes').delete().match({postId: currentPost.id, userId: session.userId});
+                if(error) alert('Unlike failed: ' + error.message);
+            }
           } else {
-            currentPost.likedBy.push(session.userId);
-            currentPost.likes++;
+            // Like
+            const newLike = { id: crypto.randomUUID ? crypto.randomUUID() : 'l'+Date.now(), postId: currentPost.id, userId: session.userId };
+            allLikes.push(newLike);
             likeBtn.classList.add('liked');
+            Store.set('likes', allLikes);
+            if(sbClient) {
+                // We omit the id parameter completely during injection so that Supabase generates its own native postgres UUID locally, bypassing formatting crashes!
+                const { error } = await sbClient.from('likes').insert([{postId: newLike.postId, userId: newLike.userId}]);
+                if(error) alert('Like failed: ' + error.message);
+            }
+
             addAuditLog('Post liked', session.username, currentPost.title);
             if (currentPost.userId !== session.userId) {
               dispatchNotification(currentPost.userId, 'like', 'New Like', `${session.username} liked your post: "${currentPost.title}"`, { postId: currentPost.id });
             }
           }
 
-          likeCount.textContent = currentPost.likes;
-          Store.set('posts', currentPosts);
+          likeCount.textContent = (Store.get('likes') || []).filter(l => l.postId === currentPost.id).length;
           renderForum();
         });
       }
@@ -1396,7 +1549,7 @@ const openViewPost = (postId) => {
       const replyBtn = document.getElementById('modalCommentSubmit');
       const replyInput = document.getElementById('modalCommentInput');
       if (replyBtn && replyInput) {
-        replyBtn.addEventListener('click', () => {
+        replyBtn.addEventListener('click', async () => {
           const body = replyInput.value.trim();
           if (!body) return;
 
@@ -1415,12 +1568,20 @@ const openViewPost = (postId) => {
           };
           allComments.push(newComment);
           Store.set('comments', allComments);
+          if(sbClient) {
+            const { error: commentsErr } = await sbClient.from('comments').insert([{id: newComment.id, postId: newComment.postId, userId: newComment.userId, content: newComment.body, created_at: newComment.date}]);
+            if (commentsErr) {
+              alert("Supabase Database Error: " + commentsErr.message);
+              return;
+            }
+          }
 
           let currentPosts = Store.get('posts');
           let currentPostIndex = currentPosts.findIndex(p => p.id === postId);
           if (currentPostIndex !== -1) {
             currentPosts[currentPostIndex].comments = (currentPosts[currentPostIndex].comments || 0) + 1;
             Store.set('posts', currentPosts);
+            if(sbClient) sbClient.from('posts').update({commentsCount: currentPosts[currentPostIndex].comments}).eq('id', currentPosts[currentPostIndex].id);
           }
 
           addAuditLog('Comment added', session.username, `Replying to ${post.title}`);
@@ -1711,6 +1872,7 @@ const renderAdminPanel = (panel) => {
           if (!await customConfirm('Dismiss this report? No action will be taken.')) return;
           const rid = btn.dataset.reportDismiss;
           Store.set('reports', Store.get('reports').filter(r => r.id !== rid));
+          if(sbClient) sbClient.from('reports').delete().eq('id', rid);
           addAuditLog('Report dismissed', session.username, rid);
           renderAdminPanel('reports');
         });
@@ -1723,8 +1885,9 @@ const renderAdminPanel = (panel) => {
           const rid = btn.dataset.reportId;
 
           const targetPost = Store.get('posts').find(p => p.id === pid);
-          Store.set('posts', Store.get('posts').filter(p => p.id !== pid));
+          if(sbClient) await sbClient.from('posts').delete().eq('id', pid); else Store.set('posts', Store.get('posts').filter(p => p.id !== pid));
           Store.set('reports', Store.get('reports').filter(r => r.id !== rid));
+          if(sbClient) sbClient.from('reports').delete().eq('id', rid);
           addAuditLog('Post deleted via Report', session.username, pid);
           if (targetPost && targetPost.userId !== session.username) {
             dispatchNotification(targetPost.userId, 'violation', 'Post Removed', `Your post "${targetPost.title}" was removed for violating community guidelines.`);
@@ -2029,7 +2192,7 @@ document.getElementById('textColorPicker').addEventListener('input', (e) => {
   document.getElementById('announcementBody').focus();
 });
 
-document.getElementById('composerSubmit').addEventListener('click', () => {
+document.getElementById('composerSubmit').addEventListener('click', async () => {
   const session = Store.get('adminSession');
   if (!session || !canDo('post_announcement')) { closeModal('composerModal'); return; }
 
@@ -2041,10 +2204,24 @@ document.getElementById('composerSubmit').addEventListener('click', () => {
   if (!subject) { errEl.textContent = 'Please provide a subject/title.'; errEl.removeAttribute('hidden'); return; }
   if (!body || body === '<br>') { errEl.textContent = 'Please write some content.'; errEl.removeAttribute('hidden'); return; }
 
-  const announcements = Store.get('announcements');
-  const newAnn = { id: 'a' + Date.now(), authorId: session.userId, subject, body: sanitizeHTML(body), date: new Date().toISOString() };
-  announcements.push(newAnn);
-  Store.set('announcements', announcements);
+  const newAnn = { id: 'a' + Date.now(), authorId: session.username, subject, body: sanitizeHTML(body), date: new Date().toISOString() };
+  const newAnnDB = { id: newAnn.id, title: newAnn.subject, content: newAnn.body, author: newAnn.authorId, tag: 'Staff', created_at: newAnn.date };
+  if (sbClient) {
+      const { error } = await sbClient.from('announcements').insert([newAnnDB]);
+      if (error) {
+          errEl.textContent = 'Database Error: ' + error.message;
+          errEl.removeAttribute('hidden');
+          return;
+      }
+      // Optimistic UI Update so we don't have to wait for websocket bounce back
+      const announcements = Store.get('announcements');
+      announcements.push(newAnn);
+      Store.set('announcements', announcements);
+  } else {
+      const announcements = Store.get('announcements');
+      announcements.push(newAnn);
+      Store.set('announcements', announcements);
+  }
   addAuditLog('Announcement posted', session.username, subject);
   dispatchNotification('all', 'announcement', 'New Announcement', `Admin posted a new announcement: "${subject}".`, { hash: '#announcements' });
 
@@ -2170,7 +2347,7 @@ const renderProfileActivity = () => {
   list.innerHTML = posts.map(p => `
       <div class="activity-item" data-pid="${sanitize(p.id)}">
         <div class="activity-title">${sanitize(p.title)}</div>
-        <div class="activity-meta"><span>❤️ ${p.likes}</span><span>💬 ${p.comments}</span><span>📅 ${new Date(p.date).toLocaleDateString()}</span></div>
+        <div class="activity-meta"><span>❤️ ${likeCount}</span><span>💬 ${p.comments}</span><span>📅 ${new Date(p.date).toLocaleDateString()}</span></div>
       </div>
     `).join('');
   list.querySelectorAll('.activity-item').forEach(item => {
@@ -2209,6 +2386,7 @@ document.getElementById('saveProfileDisplayBtn')?.addEventListener('click', () =
   me.profilePicture = newB64 || null;
 
   Store.set('users', users);
+  if (sbClient) sbClient.from('users').update({profilePicture: me.profilePicture, displayName: me.displayName, bio: me.bio, youtube: me.youtube, discord: me.discord}).eq('username', me.username);
   updateNavForSession();
   renderForum();
 
@@ -2239,6 +2417,7 @@ document.getElementById('saveUsernameBtn')?.addEventListener('click', () => {
 
   session.username = newName;
   Store.set('session', session);
+  if (sbClient) sbClient.from('users').update({username: newName, lastUsernameChange: me.lastUsernameChange}).eq('id', me.id);
   alert('Username updated successfully!');
   updateNavForSession();
   renderForum();
@@ -2269,6 +2448,7 @@ document.getElementById('savePasswordBtn')?.addEventListener('click', async () =
 
   me.passwordHash = await hashPassword(newPass);
   Store.set('users', users);
+  if (sbClient) sbClient.from('users').update({passwordHash: me.passwordHash}).eq('username', session.username);
 
   if (succ) { succ.removeAttribute('hidden'); setTimeout(() => { succ.setAttribute('hidden', ''); }, 3000); }
   document.getElementById('profileCurrentPass').value = '';
@@ -2312,7 +2492,7 @@ const openPublicProfile = (userId) => {
     activityList.innerHTML = posts.map(p => `
          <div class="activity-item" data-pid="${sanitize(p.id)}" style="padding:0.8rem; text-align:left;">
            <div class="activity-title" style="font-size:0.95rem;">${sanitize(p.title)}</div>
-           <div class="activity-meta"><span>❤️ ${p.likes}</span><span>📅 ${new Date(p.date).toLocaleDateString()}</span></div>
+           <div class="activity-meta"><span>❤️ ${likeCount}</span><span>📅 ${new Date(p.date).toLocaleDateString()}</span></div>
          </div>
        `).join('');
     activityList.querySelectorAll('.activity-item').forEach(item => {
