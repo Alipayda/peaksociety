@@ -1,0 +1,110 @@
+25: if (!allowedTags.includes(node.tagName.toLowerCase())) {
+581: { author: 'YTA_Dev', role: 'Member', avatar: '👋', text: 'Hey everyone! Been lurking YouTube Shorts for a while, finally decided to take the leap. Happy to be here!' },
+647: previewName.textContent = channel;
+672: YOUTUBE CREATOR SECTION
+683: <a href="https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}" target="_blank" rel="noopener noreferrer" class="yt-card reveal">
+685: <img src="https://img.youtube.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg" alt="${sanitize(v.title)}" loading="lazy" />
+779: <div class="post-header" style="cursor: pointer; z-index: 2; position: relative;" onclick="event.stopPropagation(); if(typeof openPublicProfile === 'function') openPublicProfile('${sanitize(p.userId)}');" title="View Profile">
+780: ${author && author.profilePicture ? `<div class="post-avatar" style="background-image:url('${author.profilePicture}'); background-size: cover; border-radius: 50%;"></div>` : `<div class="post-avatar" style="font-size: 1.2rem;">&#128100;</div>`}
+843: setupModalClose('profileModal', 'profileModalClose');
+844: setupModalClose('publicProfileModal', 'publicProfileClose');
+846: window.openPublicProfile = (userId) => {
+863: document.getElementById('publicBio').textContent = targetUser.bio || "This user hasn't added a bio yet.";
+867: if (targetUser.youtubeLink) {
+868: socialsHtml += `<a href="${sanitize(targetUser.youtubeLink)}" target="_blank" class="btn-youtube btn-sm" style="text-decoration:none;">YouTube</a>`;
+870: if (targetUser.discordHandle) {
+871: socialsHtml += `<div class="btn-discord btn-sm">Discord: ${sanitize(targetUser.discordHandle)}</div>`;
+876: if (targetUser.profilePicture) {
+877: avatarBox.style.backgroundImage = `url('${targetUser.profilePicture}')`;
+892: <div class="activity-item" style="cursor: pointer;" onclick="closeModal('publicProfileModal'); openViewPost('${sanitize(p.id)}');">
+903: openModal('publicProfileModal');
+996: if (username.length < 3 || username.length > 32) {
+1017: const taken = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+1062: u => u.username.toLowerCase() === username.toLowerCase() && (u.passwordHash === hash || !u.passwordHash)
+1104: const profileWidget = document.getElementById('navProfileWidget');
+1109: if (profileWidget) {
+1110: profileWidget.style.display = 'flex';
+1113: const avatarBlock = document.getElementById('navProfileAvatar');
+1115: if (me.profilePicture) {
+1116: avatarBlock.style.backgroundImage = `url('${me.profilePicture}')`;
+1127: if (profileWidget) profileWidget.style.display = 'none';
+1258: <div class="post-header" style="margin-bottom:1.5rem; cursor:pointer;" onclick="if(typeof openPublicProfile === 'function') openPublicProfile('${sanitize(post.userId)}');" title="View Profile">
+1259: ${author && author.profilePicture ? `<div class="post-avatar" style="background-image:url('${author.profilePicture}'); background-size: cover; border-radius: 50%;"></div>` : `<div class="post-avatar">${sanitize(author ? author.username[0] : '?')}</div>`}
+1315: <div class="post-header" style="margin-bottom:0.4rem; cursor:pointer;" onclick="if(typeof openPublicProfile === 'function') openPublicProfile('${sanitize(c.userId)}');" title="View Profile">
+1316: ${cAuthor && cAuthor.profilePicture ? `<div class="post-avatar" style="width:24px;height:24px;background-image:url('${cAuthor.profilePicture}'); background-size: cover; border-radius: 50%;"></div>` : `<div class="post-avatar" style="width:24px;height:24px;font-size:0.7rem;">${sanitize(cAuthor.username[0])}</div>`}
+1770: return diff !== 0 ? diff : a.username.localeCompare(b.username);
+1776: <input type="text" id="adminUserSearch" class="form-input" placeholder="Search a username..." style="width:100%; max-width:250px; padding:0.4rem 0.8rem; margin-bottom:1.5rem;" />
+1805: const uname = row.dataset.rowUsername.toLowerCase();
+1806: row.style.display = uname.includes(term) ? '' : 'none';
+2067: PROFILE & ACCOUNT LOGIC
+2069: if (document.getElementById('navProfileWidget')) {
+2070: document.getElementById('navProfileWidget').addEventListener('click', () => {
+2077: document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+2078: document.querySelectorAll('.profile-panel').forEach(p => p.setAttribute('hidden', ''));
+2079: document.querySelector('.profile-tab[data-target="profileDisplay"]')?.classList.add('active');
+2080: document.getElementById('profileDisplay')?.removeAttribute('hidden');
+2082: document.getElementById('profileDisplayName').value = me.displayName || me.username;
+2083: document.getElementById('profileBio').value = me.bio || '';
+2084: document.getElementById('profileYoutube').value = me.youtube || '';
+2085: document.getElementById('profileDiscord').value = me.discord || '';
+2087: const avatarEl = document.getElementById('profileEditAvatar');
+2088: const innerBase = `<div class="profile-avatar-overlay">Upload</div><input type="file" id="profileImageUpload" accept="image/png, image/jpeg" />`;
+2089: if (me.profilePicture) {
+2090: avatarEl.style.backgroundImage = `url('${me.profilePicture}')`;
+2092: avatarEl.dataset.b64 = me.profilePicture;
+2101: document.getElementById('profileImageUpload')?.addEventListener('change', window.profileUploadCallback || (window.profileUploadCallback = e => {
+2107: const aEl = document.getElementById('profileEditAvatar');
+2116: document.getElementById('profileNewUsername').value = me.username;
+2118: if (me.lastUsernameChange) {
+2119: const ms = Date.now() - new Date(me.lastUsernameChange).getTime();
+2124: lockEl.innerHTML = `You can change your username.`;
+2127: lockEl.innerHTML = `You can change your username.`;
+2129: document.getElementById('profileCurrentPass').value = '';
+2130: document.getElementById('profileNewPass').value = '';
+2132: openModal('profileModal');
+2136: document.querySelectorAll('.profile-tab').forEach(tab => {
+2138: document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+2139: document.querySelectorAll('.profile-panel').forEach(p => p.setAttribute('hidden', ''));
+2144: if (tab.dataset.target === 'profileActivity') {
+2145: renderProfileActivity();
+2150: const renderProfileActivity = () => {
+2153: const list = document.getElementById('profileActivityList');
+2165: item.addEventListener('click', () => { closeModal('profileModal'); openViewPost(item.dataset.pid); });
+2169: document.getElementById('profileEditAvatar')?.addEventListener('click', () => {
+2170: document.getElementById('profileImageUpload')?.click();
+2173: document.getElementById('profileImageUpload')?.addEventListener('change', e => {
+2179: const avatarEl = document.getElementById('profileEditAvatar');
+2186: document.getElementById('saveProfileDisplayBtn')?.addEventListener('click', () => {
+2192: me.displayName = document.getElementById('profileDisplayName').value.trim();
+2193: me.bio = document.getElementById('profileBio').value.trim();
+2194: me.youtube = document.getElementById('profileYoutube').value.trim();
+2195: me.discord = document.getElementById('profileDiscord').value.trim();
+2196: const newB64 = document.getElementById('profileEditAvatar')?.dataset.b64;
+2197: me.profilePicture = newB64 || null;
+2203: const succ = document.getElementById('profileDisplaySuccess');
+2208: const newName = document.getElementById('profileNewUsername').value.trim();
+2213: if (!newName || newName === me.username) return;
+2215: if (newName.length < 3 || newName.length > 32) { alert('Username must be 3-32 chars.'); return; }
+2217: if (me.lastUsernameChange) {
+2218: const ms = Date.now() - new Date(me.lastUsernameChange).getTime();
+2222: if (users.some(u => u.username.toLowerCase() === newName.toLowerCase() && u.id !== me.id)) { alert("Username is already taken."); return; }
+2224: me.username = newName;
+2225: me.lastUsernameChange = new Date().toISOString();
+2236: const currPass = document.getElementById('profileCurrentPass').value;
+2237: const newPass = document.getElementById('profileNewPass').value;
+2238: const err = document.getElementById('profileAccountError');
+2239: const succ = document.getElementById('profileAccountSuccess');
+2253: if (me.passwordHash !== currHash) {
+2258: me.passwordHash = await hashPassword(newPass);
+2262: document.getElementById('profileCurrentPass').value = '';
+2263: document.getElementById('profileNewPass').value = '';
+2266: document.getElementById('profileSignOutBtn')?.addEventListener('click', () => {
+2267: closeModal('profileModal');
+2271: const openPublicProfile = (userId) => {
+2278: document.getElementById('publicBio').textContent = u.bio || 'This user has not set a bio yet.';
+2281: if (u.profilePicture) {
+2282: avatarBox.style.backgroundImage = `url('${u.profilePicture}')`;
+2291: if (u.youtube) sHTML += `<a href="${sanitize(u.youtube)}" target="_blank" style="padding:0.3rem 0.6rem; border-radius:10px; background:rgba(255,0,0,0.1); color:#ff4040; text-decoration:none; font-size:0.8rem;">▶ YouTube</a>`;
+2292: if (u.discord) sHTML += `<span style="padding:0.3rem 0.6rem; border-radius:10px; background:rgba(88,101,242,0.1); color:#8899fa; font-size:0.8rem;">💬 ${sanitize(u.discord)}</span>`;
+2307: item.addEventListener('click', () => { closeModal('publicProfileModal'); openViewPost(item.dataset.pid); });
+2311: openModal('publicProfileModal');

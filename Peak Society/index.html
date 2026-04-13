@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://www.youtube.com https://i.ytimg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src 'self' https://mbulkzroidrpszxvknua.supabase.co wss://mbulkzroidrpszxvknua.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https://i.ytimg.com https://img.youtube.com data: blob:; frame-src https://www.youtube.com;" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+  <meta name="description"
+    content="Peak Society — The free Discord community for YouTube Shorts creators. Learn automation, grow your channel, and connect with serious creators." />
+  <title>Peak Society || YTA — YouTube Shorts Automation Community</title>
+  <link rel="icon" type="image/png" href="assets/PS.png">
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <script>
+    window.addEventListener("error", function (e) {
+      const err = document.createElement("div");
+      err.style.cssText = "position:fixed;top:0;left:0;z-index:999999;background:red;color:white;padding:20px;font-size:24px;";
+      err.innerText = "ERROR: " + e.message + " at " + e.filename + ":" + e.lineno;
+      document.body.appendChild(err);
+    });
+  </script>
+</head>
+
+<body>
+
+  <!-- ─── NOISE OVERLAY ─── -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ─── CURSOR ─── -->
+  <div class="custom-cursor" id="cursor" aria-hidden="true"></div>
+  <div class="custom-cursor-dot" id="cursorDot" aria-hidden="true"></div>
+
+  <!-- ─── NAVIGATION ─── -->
+  <nav id="navbar" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="#home" class="nav-logo" aria-label="Peak Society Home">
+        <span class="logo-peak">PEAK</span>
+        <span class="logo-society">SOCIETY</span>
+        <span class="logo-tag">|| YTA</span>
+      </a>
+      <ul class="nav-links" role="list">
+        <li><a href="#about">About</a></li>
+        <li><a href="#channels">Channels</a></li>
+        <li><a href="#announcements">News</a></li>
+        <li><a href="#creator">Creator</a></li>
+      </ul>
+      <div class="nav-actions">
+
+        <button class="btn-ghost" id="navSignIn" aria-label="Sign in to community">Sign In</button>
+
+        <div class="notification-wrapper" id="notificationWrapper" style="display: none; position: relative;">
+          <button class="nav-bell" id="navBell" aria-label="Notifications" title="Notifications">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="notification-badge" id="notificationBadge" hidden>0</span>
+          </button>
+          <div class="notification-dropdown" id="notificationDropdown" hidden aria-live="polite">
+            <div class="notification-header">
+              <h4>Notifications</h4>
+              <button id="markAllReadBtn" class="btn-ghost"
+                style="padding:0.2rem 0.5rem; font-size:0.75rem; border:none;">Mark all as read</button>
+            </div>
+            <div class="notification-list" id="notificationList">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <button class="nav-profile-widget" id="navProfileWidget" style="display: none;" aria-label="User Profile"
+          title="My Profile">
+          <div class="nav-profile-avatar" id="navProfileAvatar"></div>
+        </button>
+        <a href="https://discord.com/invite/PC37ybau37" target="_blank" rel="noopener noreferrer"
+          class="btn-primary nav-discord">Join Discord</a>
+      </div>
+
+      <button class="nav-hamburger" id="navHamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="nav-mobile" id="navMobile" aria-hidden="true">
+      <a href="#about">About</a>
+      <a href="#channels">Channels</a>
+      <a href="#announcements">News</a>
+      <a href="#creator">Creator</a>
+      <button class="btn-ghost" id="navSignInMobile">Sign In</button>
+      <a href="https://discord.com/invite/PC37ybau37" target="_blank" rel="noopener noreferrer" class="btn-primary">Join
+        Discord</a>
+    </div>
+  </nav>
+
+  <!-- ─── HERO ─── -->
+  <section id="home" class="hero" aria-label="Hero section">
+    <div class="hero-bg-grid" aria-hidden="true"></div>
+    <div class="hero-3d-scene" aria-hidden="true">
+      <div class="cube-wrapper" id="hero3DWrapper">
+        <div class="cube silver-play-button" id="heroPlayButton">
+          <!-- Front Face + YouTube Triangle -->
+          <div class="cube-face front">
+            <svg width="200" height="150" viewBox="0 0 200 150">
+              <defs>
+                <linearGradient id="btnGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <!-- Very dark base for the Youtube logo indent -->
+                  <stop offset="0%" stop-color="#3a3a3a" />
+                  <stop offset="50%" stop-color="#141414" />
+                  <stop offset="100%" stop-color="#020202" />
+                </linearGradient>
+                <linearGradient id="triGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <!-- Shiny top, slightly darker bottom -->
+                  <stop offset="0%" stop-color="#ffffff" />
+                  <stop offset="100%" stop-color="#dddddd" />
+                </linearGradient>
+                <filter id="insetShadow">
+                  <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="rgba(0,0,0,0.8)" />
+                </filter>
+              </defs>
+              <rect x="35" y="30" width="130" height="90" rx="22" fill="url(#btnGrad)" filter="url(#insetShadow)" />
+              <path d="M82 51 L82 99 L123 75 Z" fill="url(#triGrad)"
+                style="filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.9));" />
+            </svg>
+          </div>
+          <div class="cube-face back"></div>
+          <div class="cube-face left"></div>
+          <div class="cube-face right"></div>
+          <div class="cube-face top"></div>
+          <div class="cube-face bottom"></div>
+        </div>
+      </div>
+      <div class="hero-rings" aria-hidden="true">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+      </div>
+    </div>
+    <div class="hero-content">
+      <p class="hero-eyebrow">FREE DISCORD COMMUNITY</p>
+      <h1 class="hero-title">
+        <span class="title-line" data-text="REACH">REACH</span>
+        <span class="title-line accent" data-text="THE PEAK">THE PEAK</span>
+        <span class="title-line" data-text="OF SHORTS">OF SHORTS</span>
+      </h1>
+      <p class="hero-subtitle">YouTube Shorts automation — systematic creation, real growth. Join thousands of creators
+        building channels from scratch.</p>
+      <div class="hero-cta-group">
+        <a href="https://discord.com/invite/PC37ybau37" target="_blank" rel="noopener noreferrer"
+          class="btn-primary btn-lg">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path
+              d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.082.114 18.105.136 18.12a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" />
+          </svg>
+          Join Free — Discord
+        </a>
+        <a href="#community" class="btn-outline btn-lg">Browse Community</a>
+      </div>
+      <div class="hero-stats" aria-label="Community statistics">
+        <div class="stat-item">
+          <div class="stat-value">
+            <span class="stat-number" data-target="1500">0</span><span class="stat-suffix">+</span>
+          </div>
+          <span class="stat-label">Members</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <div class="stat-value">
+            <span class="stat-number" data-target="100">0</span><span class="stat-suffix">%</span>
+          </div>
+          <span class="stat-label">Free</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <div class="stat-value">
+            <span class="stat-number" data-target="37">0</span>
+          </div>
+          <span class="stat-label">Channels</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-scroll-hint" aria-label="Scroll to explore">
+      <span>SCROLL</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- ─── ABOUT ─── -->
+  <section id="about" class="section about-section" aria-label="About Peak Society">
+    <div class="container">
+      <div class="section-label">WHAT WE ARE</div>
+      <div class="about-grid">
+        <div class="about-text">
+          <h2 class="section-title">Systematic creation.<br /><em>Real results.</em></h2>
+          <p>Peak Society is the home for serious YouTube Shorts creators. We teach <strong>automation</strong> — not
+            bots, not spam — but a <em>systematic, repeatable approach</em> to creating content that grows channels
+            consistently.</p>
+          <p>From niche selection to video production workflows, our community covers every step. Beginners are welcome.
+            Grinders thrive here.</p>
+          <a href="https://discord.com/invite/PC37ybau37" target="_blank" rel="noopener noreferrer"
+            class="btn-primary">Join the Community</a>
+        </div>
+        <div class="about-cards" aria-label="Community features">
+          <div class="feature-card" style="--delay:0s">
+            <div class="feature-icon" aria-hidden="true">📋</div>
+            <h3>Rules & Structure</h3>
+            <p>Clear guidelines keep the community focused and high-quality.</p>
+          </div>
+          <div class="feature-card" style="--delay:.1s">
+            <div class="feature-icon" aria-hidden="true">📣</div>
+            <h3>Daily Content</h3>
+            <p>Fresh verses, uploads, and resources posted every day.</p>
+          </div>
+          <div class="feature-card" style="--delay:.2s">
+            <div class="feature-icon" aria-hidden="true">🏆</div>
+            <h3>Wins Sharing</h3>
+            <p>Celebrate milestones. Motivation fuels momentum.</p>
+          </div>
+          <div class="feature-card" style="--delay:.3s">
+            <div class="feature-icon" aria-hidden="true">🎓</div>
+            <h3>YTA Learning Hub</h3>
+            <p>Resources, niches, and tips specifically for YT automation.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── DISCORD CHANNELS PREVIEW ─── -->
+  <section id="channels" class="section channels-section" aria-label="Discord channels">
+    <div class="container">
+      <div class="section-label">INSIDE THE SERVER</div>
+      <h2 class="section-title">Everything you need,<br />organized.</h2>
+      <div class="channels-layout">
+        <div class="channels-sidebar" aria-label="Channel list">
+          <div class="server-header">
+            <div class="server-icon" aria-hidden="true">⚡</div>
+            <div>
+              <div class="server-name">Peak Society || YTA</div>
+              <div class="server-boost">4/37 Boosts</div>
+            </div>
+          </div>
+          <div class="channel-groups">
+            <div class="channel-group">
+              <div class="group-name">📌 WELCOME</div>
+              <div class="channel-item active" data-channel="rules">📋 rules</div>
+              <div class="channel-item" data-channel="welcome">👋 welcome</div>
+              <div class="channel-item" data-channel="announcements">📢 announcement</div>
+            </div>
+            <div class="channel-group">
+              <div class="group-name">📅 DAILY</div>
+              <div class="channel-item" data-channel="verses">🟥 verses</div>
+              <div class="channel-item" data-channel="uploads">👥 uploads</div>
+            </div>
+            <div class="channel-group">
+              <div class="group-name">💬 COMMUNITY</div>
+              <div class="channel-item" data-channel="general">💬 general</div>
+              <div class="channel-item" data-channel="questions">❓ questions</div>
+              <div class="channel-item" data-channel="wins">🥇 wins</div>
+            </div>
+            <div class="channel-group">
+              <div class="group-name">🎓 YTA LEARNING</div>
+              <div class="channel-item" data-channel="resources">💰 resources</div>
+              <div class="channel-item" data-channel="niches">🎯 niches</div>
+              <div class="channel-item" data-channel="tips">💡 tips</div>
+            </div>
+          </div>
+        </div>
+        <div class="channel-preview" aria-live="polite">
+          <div class="preview-header">
+            <span class="preview-hash">#</span>
+            <span class="preview-name" id="previewName">rules</span>
+          </div>
+          <div class="preview-messages" id="previewMessages">
+            <!-- filled by JS -->
+          </div>
+          <div class="preview-join-cta">
+            <p>Want to chat? <a href="https://discord.com/invite/PC37ybau37" target="_blank"
+                rel="noopener noreferrer">Join Discord to participate →</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── ANNOUNCEMENTS ─── -->
+  <section id="announcements" class="section announcements-section" aria-label="Latest announcements">
+    <div class="container">
+      <div class="section-label">LATEST NEWS</div>
+      <div class="announcements-header">
+        <h2 class="section-title">Announcements</h2>
+        <button class="btn-ghost" id="adminAnnouncementsBtn" aria-label="Open admin panel">Admin Portal</button>
+      </div>
+      <div class="announcements-list" id="announcementsList" aria-label="Announcements feed">
+        <!-- populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- COMMUNITY FORUM -->
+  <section id="community" class="section community-section" aria-label="Community forum">
+    <div class="container">
+      <div class="section-label">COMMUNITY FORUM</div>
+      <div class="community-header">
+        <h2 class="section-title">Ask. Share. Grow.</h2>
+        <button class="btn-primary" id="newPostBtn" aria-label="Create a new post">+ New Post</button>
+      </div>
+      <div class="forum-tabs" role="tablist" aria-label="Forum categories">
+        <button class="forum-tab active" role="tab" aria-selected="true" data-tab="all">All</button>
+        <button class="forum-tab" role="tab" aria-selected="false" data-tab="wins">🥇 Wins</button>
+        <button class="forum-tab" role="tab" aria-selected="false" data-tab="questions">❓ Questions</button>
+        <button class="forum-tab" role="tab" aria-selected="false" data-tab="tutorial-requests">🎬 Tutorial
+          Requests</button>
+      </div>
+      <div class="forum-posts" id="forumPosts" aria-label="Forum posts" role="feed">
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CREATOR SPOTLIGHT ─── -->
+  <section id="creator" class="section creator-section" aria-label="Creator spotlight">
+    <div class="container">
+      <div class="section-label">LEARN FROM THE SOURCE</div>
+      <div class="creator-grid">
+        <div class="creator-info">
+          <h2 class="section-title">Tutorial videos<br />from the creator.</h2>
+          <p>The founder of Peak Society publishes free tutorials on YouTube — covering every aspect of YouTube Shorts
+            automation, from niche research to publishing workflows.</p>
+          <a href="https://www.youtube.com/@gelly_yta" target="_blank" rel="noopener noreferrer" class="btn-youtube">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+            </svg>
+            Visit Channel
+          </a>
+        </div>
+        <div class="creator-videos" id="creatorVideos" aria-label="Featured YouTube tutorials">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FINAL CTA BANNER ─── -->
+  <section class="section cta-banner" aria-label="Call to action">
+    <div class="cta-3d-bg" aria-hidden="true">
+      <div class="cta-orb cta-orb-1"></div>
+      <div class="cta-orb cta-orb-2"></div>
+    </div>
+    <div class="container cta-inner">
+      <h2 class="cta-title">Ready to reach<br /><em>the peak?</em></h2>
+      <p class="cta-sub">It's free. Always will be.</p>
+      <a href="https://discord.com/invite/PC37ybau37" target="_blank" rel="noopener noreferrer"
+        class="btn-primary btn-xl">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path
+            d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.082.114 18.105.136 18.12a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" />
+        </svg>
+        Join Peak Society — Free
+      </a>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ─── -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="logo-peak">PEAK</span><span class="logo-society">SOCIETY</span><span class="logo-tag"> ||
+          YTA</span>
+        <p>Free YouTube Shorts automation community.</p>
+      </div>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="#about">About</a>
+        <a href="#channels">Channels</a>
+        <a href="#announcements">News</a>
+        <a href="https://discord.com/invite/PC37ybau37" target="_blank" rel="noopener noreferrer">YouTube</a>
+        <a href="https://discord.gg/peaksociety" target="_blank" rel="noopener noreferrer">Discord</a>
+      </nav>
+      <div class="footer-bottom">
+        <span>© 2025 Peak Society. All rights reserved.</span>
+        <button class="btn-ghost btn-sm" id="footerAdminBtn">Admin Login</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ══════════════════════════════════════
+       MODALS
+  ══════════════════════════════════════ -->
+
+  <!-- Auth Modal -->
+  <div class="modal-backdrop" id="authModal" role="dialog" aria-modal="true" aria-label="Sign in" hidden>
+    <div class="modal">
+      <button class="modal-close" id="authModalClose" aria-label="Close">&times;</button>
+      <div class="modal-body">
+        <div class="modal-icon" aria-hidden="true">⚡</div>
+        <h2>Welcome back</h2>
+        <p class="modal-sub">Sign in to post in the community</p>
+        <div id="authError" class="auth-error" role="alert" aria-live="polite" hidden></div>
+        <input type="text" id="authUsername" class="form-input" placeholder="Username" autocomplete="username"
+          maxlength="32" />
+        <input type="password" id="authPassword" class="form-input" placeholder="Password"
+          autocomplete="current-password" maxlength="64" />
+        <button class="btn-primary btn-full" id="authSubmit">Sign In</button>
+        <button class="btn-ghost btn-full btn-sm" id="authRegisterToggle">Create account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Post Modal -->
+  <div class="modal-backdrop" id="postModal" role="dialog" aria-modal="true" aria-label="Create post" hidden>
+    <div class="modal modal-wide">
+      <button class="modal-close" id="postModalClose" aria-label="Close">&times;</button>
+      <div class="modal-body">
+        <h2>New Post</h2>
+        <div class="form-group">
+          <label for="postCategory" class="form-label">Category</label>
+          <select id="postCategory" class="form-input form-select">
+            <option value="wins">🥇 Win</option>
+            <option value="questions">❓ Question</option>
+            <option value="tutorial-requests">🎬 Tutorial Request</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="postTitle" class="form-label">Title</label>
+          <input type="text" id="postTitle" class="form-input" placeholder="Write a descriptive title…"
+            maxlength="120" />
+        </div>
+        <div class="form-group">
+          <label for="postBody" class="form-label">Content</label>
+          <textarea id="postBody" class="form-input form-textarea" placeholder="Share your story, question, or request…"
+            maxlength="1500" rows="5"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="postImageBtn" class="form-label">Attach Image (Optional)</label>
+          <input type="file" id="postImageBtn" accept="image/*" class="form-input"
+            style="padding: 0.5rem; font-size: 0.85rem;" />
+        </div>
+        <div id="postError" class="auth-error" role="alert" aria-live="polite" hidden></div>
+        <button class="btn-primary btn-full" id="postSubmit">Publish Post</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Modal -->
+  <div class="modal-backdrop" id="adminModal" role="dialog" aria-modal="true" aria-label="Admin portal" hidden>
+    <div class="modal modal-xl">
+      <button class="modal-close" id="adminModalClose" aria-label="Close">&times;</button>
+      <div class="admin-layout">
+        <aside class="admin-sidebar" role="navigation" aria-label="Admin sections">
+          <div class="admin-logo">⚡ ADMIN</div>
+          <nav>
+            <button class="admin-nav-item active" data-panel="dashboard">Dashboard</button>
+            <button class="admin-nav-item" data-panel="announcements">Announcements</button>
+            <button class="admin-nav-item" data-panel="posts">Forum Posts</button>
+            <button class="admin-nav-item" data-panel="users">Users</button>
+            <button class="admin-nav-item" data-panel="reports">Report Logs</button>
+            <button class="admin-nav-item" data-panel="audit">Audit Log</button>
+            <button class="admin-nav-item" data-panel="status">Status</button>
+          </nav>
+          <div class="admin-user-info" id="adminUserInfo"></div>
+          <button class="btn-ghost btn-sm admin-logout" id="adminLogout">Log Out</button>
+        </aside>
+        <main class="admin-main" id="adminMain" role="main">
+          <!-- panels injected by JS -->
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div class="modal-backdrop" id="adminAuthModal" role="dialog" aria-modal="true" aria-label="Admin login" hidden>
+    <div class="modal">
+      <button class="modal-close" id="adminAuthClose" aria-label="Close">&times;</button>
+      <div class="modal-body">
+        <div class="modal-icon" aria-hidden="true">🔒</div>
+        <h2>Admin Portal</h2>
+        <p class="modal-sub">Restricted access</p>
+        <div id="adminAuthError" class="auth-error" role="alert" aria-live="polite" hidden></div>
+        <input type="text" id="adminAuthUser" class="form-input" placeholder="Admin username" autocomplete="username"
+          maxlength="32" />
+        <input type="password" id="adminAuthPass" class="form-input" placeholder="Password"
+          autocomplete="current-password" maxlength="64" />
+        <button class="btn-primary btn-full" id="adminAuthSubmit">Enter Portal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Announcement Composer Modal -->
+  <div class="modal-backdrop" id="composerModal" role="dialog" aria-modal="true" aria-label="Compose announcement"
+    hidden>
+    <div class="modal modal-wide">
+      <button class="modal-close" id="composerClose" aria-label="Close">&times;</button>
+      <div class="modal-body">
+        <h2>Post Announcement</h2>
+        <div class="form-group">
+          <label for="announcementSubject" class="form-label">Subject / Title</label>
+          <input type="text" id="announcementSubject" class="form-input" placeholder="Announcement title…"
+            maxlength="120" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Content</label>
+          <div class="rich-toolbar" role="toolbar" aria-label="Text formatting">
+            <button class="toolbar-btn" data-cmd="bold" title="Bold"><strong>B</strong></button>
+            <button class="toolbar-btn" data-cmd="italic" title="Italic"><em>I</em></button>
+            <button class="toolbar-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+            <div class="toolbar-sep" aria-hidden="true"></div>
+            <button class="toolbar-btn" data-cmd="insertUnorderedList" title="Bullet list">≡</button>
+            <button class="toolbar-btn" data-cmd="insertOrderedList" title="Numbered list">1.</button>
+            <div class="toolbar-sep" aria-hidden="true"></div>
+            <button class="toolbar-btn" data-cmd="justifyLeft" title="Left align">←</button>
+            <button class="toolbar-btn" data-cmd="justifyCenter" title="Center">↔</button>
+            <div class="toolbar-sep" aria-hidden="true"></div>
+            <label class="toolbar-btn color-btn" title="Text color">
+              A
+              <input type="color" id="textColorPicker" value="#ffffff" aria-label="Text color" />
+            </label>
+            <button class="toolbar-btn" data-cmd="removeFormat" title="Clear formatting">✕</button>
+          </div>
+          <div id="announcementBody" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true"
+            aria-label="Announcement content" placeholder="Write your announcement…"></div>
+        </div>
+        <div id="composerError" class="auth-error" role="alert" aria-live="polite" hidden></div>
+        <button class="btn-primary btn-full" id="composerSubmit">Publish Announcement</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Post Modal -->
+  <div class="modal-backdrop" id="viewPostModal" role="dialog" aria-modal="true" aria-label="View post" hidden>
+    <div class="modal modal-wide">
+      <button class="modal-close" id="viewPostClose" aria-label="Close">&times;</button>
+      <div class="modal-body" id="viewPostBody">
+        <!-- populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Post Modal -->
+  <div class="modal-backdrop" id="reportModal" role="dialog" aria-modal="true" aria-label="Report post" hidden>
+    <div class="modal">
+      <button class="modal-close" id="reportModalClose" aria-label="Close">&times;</button>
+      <div class="modal-body">
+        <h2>Report Post</h2>
+        <p class="modal-sub">Help us keep the community safe.</p>
+        <div class="form-group">
+          <label for="reportReason" class="form-label">Reason for Reporting</label>
+          <select id="reportReason" class="form-input form-select">
+            <option value="Spam or Misleading">Spam or Misleading</option>
+            <option value="Harassment or Abuse">Harassment or Abuse</option>
+            <option value="Inappropriate Content">Inappropriate Content</option>
+            <option value="Other">Other / Custom Reason</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="reportMessage" class="form-label">Additional Details (Optional)</label>
+          <textarea id="reportMessage" class="form-input form-textarea"
+            placeholder="Provide more context to help administrators..." maxlength="500" rows="4"></textarea>
+        </div>
+        <input type="hidden" id="reportPostId" value="" />
+        <button class="btn-primary btn-full" id="reportSubmitBtn"
+          style="background-color: var(--error); border-color: var(--error); margin-top:0.5rem;">Submit Report</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Action Modal -->
+  <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-label="Confirm action" hidden>
+    <div class="modal" style="max-width:440px;">
+      <button class="modal-close" id="confirmClose" aria-label="Close">&times;</button>
+      <div class="modal-body">
+        <h2 id="confirmTitle" style="font-size:1.2rem; margin-bottom:1rem;">This page says</h2>
+        <p id="confirmMessage" style="color:var(--mid); margin-bottom:2rem; font-size:0.95rem; line-height:1.5;">Are you
+          certain you want to permanently delete this post?</p>
+        <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+          <button class="btn-ghost btn-sm" id="confirmCancelBtn" style="min-width:100px;">Cancel</button>
+          <button class="btn-primary btn-sm" id="confirmAcceptBtn" style="min-width:100px;">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Management Modal -->
+  <div class="modal-backdrop" id="profileModal" role="dialog" aria-modal="true" aria-label="Profile Management" hidden>
+    <div class="modal modal-wide profile-modal">
+      <button class="modal-close" id="profileModalClose" aria-label="Close">&times;</button>
+      <div class="profile-layout">
+        <aside class="profile-sidebar">
+          <ul class="profile-tabs" role="tablist">
+            <li class="profile-tab active" role="tab" data-target="profileDisplay">Profile Display</li>
+            <li class="profile-tab" role="tab" data-target="profileAccount">Account Settings</li>
+            <li class="profile-tab" role="tab" data-target="profileActivity">My Activity</li>
+          </ul>
+        </aside>
+        <main class="profile-content">
+          <!-- Profile View -->
+          <div id="profileDisplay" class="profile-panel active">
+            <h2>Profile Display</h2>
+            <p class="modal-sub">Customize how you appear to others in the Peak Society.</p>
+            <div class="form-group" style="display:flex; gap:1.5rem; align-items:center;">
+              <div class="profile-avatar-large" id="profileEditAvatar">
+                <div class="profile-avatar-overlay">Upload</div>
+                <input type="file" id="profileImageUpload" accept="image/png, image/jpeg" style="display:none;" />
+              </div>
+              <div style="flex:1;">
+                <label for="profileDisplayName" class="form-label">Display Name</label>
+                <input type="text" id="profileDisplayName" class="form-input" placeholder="Display Name..."
+                  maxlength="30" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="profileBio" class="form-label">Bio</label>
+              <textarea id="profileBio" class="form-input form-textarea"
+                placeholder="Tell the community about yourself..." rows="3" maxlength="250"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="profileYoutube" class="form-label">YouTube Link (Optional)</label>
+              <input type="url" id="profileYoutube" class="form-input" placeholder="https://youtube.com/@yourchannel" />
+            </div>
+            <div class="form-group">
+              <label for="profileDiscord" class="form-label">Discord Handle (Optional)</label>
+              <input type="text" id="profileDiscord" class="form-input" placeholder="e.g. CreatorJane#1234" />
+            </div>
+            <button class="btn-primary" id="saveProfileDisplayBtn">Save Profile</button>
+            <div id="profileDisplaySuccess" hidden style="color:var(--white); font-size:0.85rem; margin-top:0.5rem;">
+              Saved!</div>
+          </div>
+
+          <!-- Account Settings -->
+          <div id="profileAccount" class="profile-panel" hidden>
+            <h2>Account Settings</h2>
+            <p class="modal-sub">Manage your security and credentials.</p>
+            <div class="form-group" style="margin-top:2rem;">
+              <label for="profileNewUsername" class="form-label">Change Username <span
+                  style="color:var(--error);">(14-day lock)</span></label>
+              <input type="text" id="profileNewUsername" class="form-input" placeholder="New Username..."
+                maxlength="32" />
+              <div style="font-size:0.75rem; color:var(--mid); margin-top:0.4rem;" id="usernameLockLabel"></div>
+            </div>
+            <button class="btn-ghost" id="saveUsernameBtn"
+              style="border:1px solid var(--border); margin-bottom:2rem;">Update Username</button>
+
+            <hr style="border:0; border-top:1px solid var(--border); margin-bottom:2rem;">
+
+            <div class="form-group">
+              <label for="profileCurrentPass" class="form-label">Current Password</label>
+              <input type="password" id="profileCurrentPass" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label for="profileNewPass" class="form-label">New Password</label>
+              <input type="password" id="profileNewPass" class="form-input" />
+            </div>
+            <button class="btn-ghost" id="savePasswordBtn" style="border:1px solid var(--border);">Update
+              Password</button>
+            <div id="profileAccountError" class="auth-error" role="alert" style="margin-top:1rem;" hidden></div>
+            <div id="profileAccountSuccess" hidden style="color:var(--white); font-size:0.85rem; margin-top:1rem;">
+              Success!</div>
+
+            <hr style="border:0; border-top:1px solid var(--border); margin-top:2rem; margin-bottom:2rem;">
+            <button class="btn-ghost" id="profileSignOutBtn"
+              style="color:var(--error); border:1px solid var(--border-light); width:100%;">Log Out</button>
+
+          </div>
+
+          <!-- My Activity -->
+          <div id="profileActivity" class="profile-panel" hidden>
+            <h2>My Activity</h2>
+            <p class="modal-sub">Your recent forum posts.</p>
+            <div id="profileActivityList" class="activity-list">
+              <!-- JS Populated -->
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- Public Profile View Modal -->
+  <div class="modal-backdrop" id="publicProfileModal" role="dialog" aria-modal="true" aria-label="Public Profile"
+    hidden>
+    <div class="modal" style="max-width:500px; padding:0;">
+      <button class="modal-close" id="publicProfileClose" aria-label="Close"
+        style="top:1.5rem; right:1.5rem;">&times;</button>
+      <div class="public-profile-card">
+        <div class="public-profile-header">
+          <div class="profile-avatar-large" id="publicAvatarBox" style="margin: 0 auto; border: 4px solid #111;"></div>
+        </div>
+        <div class="public-profile-body">
+          <h2 id="publicUsername" style="text-align:center; font-size:1.6rem; margin-bottom:0.2rem;">Username</h2>
+          <div id="publicRoleBadge" style="text-align:center; margin-bottom:1.5rem;"></div>
+          <div id="publicBio"
+            style="color:var(--mid); text-align:center; line-height:1.6; margin-bottom:1.5rem; font-size:0.95rem;">
+          </div>
+          <div id="publicSocials" style="display:flex; justify-content:center; gap:1rem; margin-bottom:2rem;"></div>
+
+          <h4
+            style="border-bottom:1px solid var(--border); padding-bottom:0.5rem; margin-bottom:1rem; font-size:0.9rem;">
+            Recent Posts</h4>
+          <div id="publicActivityList" class="public-activity-list">
+            <!-- JS Populated -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="app.js?v=2"></script>
+</body>
+
+</html>
