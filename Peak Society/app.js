@@ -1026,12 +1026,18 @@ const applyAuthMode = () => {
     : 'Sign in to post in the community';
   const emailEl = document.getElementById('authEmail');
   if (emailEl) emailEl.style.display = isRegisterMode ? 'block' : 'none';
+  const forgotBtn = document.getElementById('authForgotPassword');
+  if (forgotBtn) forgotBtn.style.display = isRegisterMode ? 'none' : '';
 };
 
 document.getElementById('authRegisterToggle').addEventListener('click', () => {
   isRegisterMode = !isRegisterMode;
   applyAuthMode();
   document.getElementById('authError').setAttribute('hidden', '');
+});
+
+document.getElementById('authForgotPassword').addEventListener('click', () => {
+  if (typeof openForgotPasswordModal === 'function') openForgotPasswordModal();
 });
 
 // Rate limiting state

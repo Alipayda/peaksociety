@@ -44,6 +44,10 @@ const Auth = (() => {
 
     // React to sign-in, sign-out, token refresh, etc.
     sbClient.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        if (typeof openResetPasswordModal === 'function') openResetPasswordModal();
+        return;
+      }
       if (session) {
         _user = session.user;
         await _fetchProfile(_user.id);
@@ -126,6 +130,21 @@ const Auth = (() => {
     return result;
   };
 
+  /* ── forgotPassword(email) ───────────────────── */
+  const forgotPassword = async (email) => {
+    if (!sbClient) return { error: { message: 'Supabase not connected.' } };
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { data, error } = await sbClient.auth.resetPasswordForEmail(email, { redirectTo });
+    return { data, error };
+  };
+
+  /* ── updatePassword(newPassword) ─────────────── */
+  const updatePassword = async (newPassword) => {
+    if (!sbClient) return { error: { message: 'Supabase not connected.' } };
+    const { data, error } = await sbClient.auth.updateUser({ password: newPassword });
+    return { data, error };
+  };
+
   /* ── signOut ─────────────────────────────────── */
   const signOut = async () => {
     if (sbClient) await sbClient.auth.signOut();
@@ -153,5 +172,5 @@ const Auth = (() => {
     return true;
   };
 
-  return { init, signUp, signIn, signOut, getUser, getProfile, getRole, onChange, requireRole };
+  return { init, signUp, signIn, signOut, forgotPassword, updatePassword, getUser, getProfile, getRole, onChange, requireRole };
 })();

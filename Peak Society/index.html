@@ -409,7 +409,50 @@
         <input type="password" id="authPassword" class="form-input" placeholder="Password"
           autocomplete="current-password" maxlength="64" />
         <button class="btn-primary btn-full" id="authSubmit">Sign In</button>
+        <button class="btn-ghost btn-full btn-sm" id="authForgotPassword" style="font-size:.8rem;padding:.35rem .5rem;opacity:.75;">Forgot password?</button>
         <button class="btn-ghost btn-full btn-sm" id="authRegisterToggle">Create account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div class="modal-backdrop" id="forgotPasswordModal" role="dialog" aria-modal="true" aria-label="Forgot password" hidden>
+    <div class="modal">
+      <button class="modal-close" id="fpClose" aria-label="Close">&times;</button>
+      <div class="modal-body">
+        <div class="modal-icon" aria-hidden="true">🔑</div>
+        <h2>Forgot Password</h2>
+        <p class="modal-sub">Enter your email and we'll send you a reset link.</p>
+        <div id="fpError" class="auth-error" role="alert" aria-live="polite" hidden></div>
+        <div id="fpSuccess" class="auth-error" role="status" aria-live="polite"
+          style="background:rgba(34,197,94,.12);color:#22c55e;border-color:rgba(34,197,94,.3);" hidden>
+          Reset link sent! Check your email inbox.
+        </div>
+        <input type="email" id="fpEmail" class="form-input" placeholder="Email address"
+          autocomplete="email" maxlength="254" />
+        <button class="btn-primary btn-full" id="fpSubmit">Send Reset Link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal (shown after user clicks email link) -->
+  <div class="modal-backdrop" id="resetPasswordModal" role="dialog" aria-modal="true" aria-label="Reset password" hidden>
+    <div class="modal">
+      <button class="modal-close" id="rpClose" aria-label="Close">&times;</button>
+      <div class="modal-body">
+        <div class="modal-icon" aria-hidden="true">🔒</div>
+        <h2>Set New Password</h2>
+        <p class="modal-sub">Choose a new password for your account.</p>
+        <div id="rpError" class="auth-error" role="alert" aria-live="polite" hidden></div>
+        <div id="rpSuccess" class="auth-error" role="status" aria-live="polite"
+          style="background:rgba(34,197,94,.12);color:#22c55e;border-color:rgba(34,197,94,.3);" hidden>
+          Password updated! You can now sign in.
+        </div>
+        <input type="password" id="rpNewPassword" class="form-input" placeholder="New password"
+          autocomplete="new-password" maxlength="64" />
+        <input type="password" id="rpConfirmPassword" class="form-input" placeholder="Confirm new password"
+          autocomplete="new-password" maxlength="64" />
+        <button class="btn-primary btn-full" id="rpSubmit">Set New Password</button>
       </div>
     </div>
   </div>
@@ -729,6 +772,7 @@
 
   <script src="auth.js"></script>
   <script src="app.js?v=3"></script>
+  <script src="forgot-password.js"></script>
 </body>
 
 </html>
