@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/config.js", "destination": "/api/config" }
+  ],
+  "public": "Peak Society"
+}
