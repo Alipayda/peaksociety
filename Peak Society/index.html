@@ -5,9 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://www.youtube.com https://i.ytimg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src 'self' https://mbulkzroidrpszxvknua.supabase.co wss://mbulkzroidrpszxvknua.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https://i.ytimg.com https://img.youtube.com data: blob:; frame-src https://www.youtube.com;" />
+    content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://www.youtube.com https://i.ytimg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src 'self' https://mbulkzroidrpszxvknua.supabase.co wss://mbulkzroidrpszxvknua.supabase.co https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https://i.ytimg.com https://img.youtube.com data: blob:; frame-src https://www.youtube.com;" />
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-  <meta http-equiv="X-Frame-Options" content="DENY" />
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
   <meta name="description"
     content="Peak Society — The free Discord community for YouTube Shorts creators. Learn automation, grow your channel, and connect with serious creators." />
@@ -723,6 +722,8 @@
   </div>
   <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Environment config (injected by server) -->
+  <script src="/config.js"></script>
 
   <script src="app.js?v=2"></script>
 </body>

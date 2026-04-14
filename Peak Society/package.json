@@ -1,0 +1,12 @@
+{
+  "name": "peak-society",
+  "version": "1.0.0",
+  "description": "Peak Society - YouTube Shorts Automation Community",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  }
+}

@@ -46,9 +46,9 @@ const hashPassword = async (password) => {
 
 const csrfToken = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36);
 
-// Initialize Supabase
-const SUPABASE_URL = "https://mbulkzroidrpszxvknua.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_VIACP_4OHYSLMz32zmrWZQ_bBWHefKu";
+// Initialize Supabase — credentials loaded from server via /config.js
+const SUPABASE_URL = (window.__CONFIG__ && window.__CONFIG__.SUPABASE_URL) || '';
+const SUPABASE_ANON_KEY = (window.__CONFIG__ && window.__CONFIG__.SUPABASE_ANON_KEY) || '';
 
 let sbClient = null;
 try {
