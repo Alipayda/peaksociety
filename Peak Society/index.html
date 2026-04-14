@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://www.youtube.com https://i.ytimg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src 'self' https://mbulkzroidrpszxvknua.supabase.co wss://mbulkzroidrpszxvknua.supabase.co https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https://i.ytimg.com https://img.youtube.com data: blob:; frame-src https://www.youtube.com;" />
+    content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://www.youtube.com https://i.ytimg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https://i.ytimg.com https://img.youtube.com data: blob:; frame-src https://www.youtube.com;" />
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
   <meta name="description"
@@ -404,6 +404,8 @@
         <div id="authError" class="auth-error" role="alert" aria-live="polite" hidden></div>
         <input type="text" id="authUsername" class="form-input" placeholder="Username" autocomplete="username"
           maxlength="32" />
+        <input type="email" id="authEmail" class="form-input" placeholder="Email address"
+          autocomplete="email" maxlength="254" style="display:none;" />
         <input type="password" id="authPassword" class="form-input" placeholder="Password"
           autocomplete="current-password" maxlength="64" />
         <button class="btn-primary btn-full" id="authSubmit">Sign In</button>
@@ -725,7 +727,8 @@
   <!-- Environment config (injected by server) -->
   <script src="/config.js"></script>
 
-  <script src="app.js?v=2"></script>
+  <script src="auth.js"></script>
+  <script src="app.js?v=3"></script>
 </body>
 
 </html>
