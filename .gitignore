@@ -1,5 +1,9 @@
 # Environment variables — NEVER commit this
 .env
 
+# Generated config file (contains env vars injected at build time)
+config.js
+"Peak Society/config.js"
+
 # Node modules
 node_modules/

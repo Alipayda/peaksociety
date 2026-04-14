@@ -38,11 +38,6 @@ const sanitizeHTML = (html) => {
   return div.innerHTML;
 };
 
-const hashPassword = async (password) => {
-  const enc = new TextEncoder().encode(password + 'ps_salt_2025');
-  const buf = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-};
 
 const csrfToken = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36);
 
@@ -69,10 +64,10 @@ try {
 const Store = (() => {
   const defaults = {
     users: [
-      { id: 'u1', username: 'Owner', passwordHash: '98c0d4c37f52edefdd5c1764401cfd27b26f6bc6a788f04d63f05ccf4a7a15fe', role: 'owner', joined: '2024-01-01' },
-      { id: 'u2', username: 'AdminUser', passwordHash: '86c1e9538c0dbc985825fe35b8e41ff64a363e1d310f57a0ea91e4101bce977e', role: 'admin', joined: '2024-03-15' },
-      { id: 'u3', username: 'StaffMike', passwordHash: '0ef8d9349851ef8d44d31fecaf16cdd893d397afd29e9725084dfd6eea830af6', role: 'staff', joined: '2024-05-20' },
-      { id: 'u4', username: 'CreatorJane', passwordHash: 'cfb6c3e06ba2b44251343efa1b5d4d683a850adbf77f2e588893a5fdba26581a', role: 'member', joined: '2024-07-01' },
+      { id: 'u1', username: 'Owner', role: 'owner', joined: '2024-01-01' },
+      { id: 'u2', username: 'AdminUser', role: 'admin', joined: '2024-03-15' },
+      { id: 'u3', username: 'StaffMike', role: 'staff', joined: '2024-05-20' },
+      { id: 'u4', username: 'CreatorJane', role: 'member', joined: '2024-07-01' },
     ],
     posts: [
       { id: 'p1', userId: 'u4', category: 'wins', title: 'Hit 10k subscribers in 60 days!', body: 'Started with zero knowledge, followed the niche tips from the resources channel, posted daily Shorts. The community kept me accountable. 10k is just the start!', likes: 42, comments: 8, date: '2025-06-10T10:00:00Z', likedBy: [] },
@@ -113,21 +108,8 @@ const Store = (() => {
     if (sbClient && key !== 'session' && key !== 'adminSession') {
       try {
         if (key === 'users') {
-          // Explicit requirement: Users table logic
-          for (const u of val) { 
-            await sbClient.from('users').upsert({ 
-              username: u.username, 
-              role: u.role, 
-              joined: u.joined,
-              profilePicture: u.profilePicture || null,
-              displayName: u.displayName || null,
-              bio: u.bio || null,
-              youtube: u.youtube || null,
-              discord: u.discord || null,
-              passwordHash: u.passwordHash || null,
-              lastUsernameChange: u.lastUsernameChange || null
-            }); 
-          }
+          // Users are updated directly via targeted sbClient.from('users').update(...).eq('id', ...)
+          // Mass upsert is skipped — RLS only allows users to update their own row
         } else if (key === 'reports') {
           // Explicit requirement: Report Logs logic 
           for (const r of val) { await sbClient.from('reports').upsert(r); }
@@ -256,22 +238,6 @@ const Store = (() => {
              } catch(e) {}
          }
       }).subscribe();
-  }
-
-  // Migration: Reset users if they have the old unsalted hash for Owner
-  const currentUsers = get('users');
-  if (currentUsers && currentUsers.some(u => u.username === 'Owner' && u.passwordHash === '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8')) {
-    set('users', defaults.users);
-  }
-
-  // Restore ghost sessions safely
-  const s = get('session');
-  if (s) {
-    const uList = get('users') || [];
-    if (!uList.find(u => u.id === s.userId)) {
-      uList.push({ id: s.userId, username: s.username, role: s.role, passwordHash: 'ghost', joined: new Date().toISOString().split('T')[0] });
-      set('users', uList);
-    }
   }
 
   return { get, set };
@@ -1037,10 +1003,12 @@ document.getElementById('newPostBtn')?.addEventListener('click', () => {
   openModal('postModal');
 });
 
-const signOut = () => {
+const signOut = async () => {
   const s = Store.get('session');
   if (s) addAuditLog('User signed out', s.username, s.username);
+  if (sbClient) await sbClient.auth.signOut();
   Store.set('session', null);
+  Store.set('adminSession', null);
   updateNavForSession();
   renderForum();
 };
@@ -1054,8 +1022,10 @@ const applyAuthMode = () => {
   document.querySelector('#authModal h2').textContent = isRegisterMode ? 'Create Account' : 'Welcome back';
   document.getElementById('authSubmit').textContent = isRegisterMode ? 'Create Account' : 'Sign In';
   document.querySelector('#authModal .modal-sub').textContent = isRegisterMode
-    ? 'Choose a username and password'
+    ? 'Choose a username, email, and password'
     : 'Sign in to post in the community';
+  const emailEl = document.getElementById('authEmail');
+  if (emailEl) emailEl.style.display = isRegisterMode ? 'block' : 'none';
 };
 
 document.getElementById('authRegisterToggle').addEventListener('click', () => {
@@ -1082,10 +1052,10 @@ document.getElementById('authSubmit').addEventListener('click', async () => {
 
   const username = document.getElementById('authUsername').value.trim();
   const password = document.getElementById('authPassword').value;
+  const email = isRegisterMode ? (document.getElementById('authEmail')?.value.trim() || '') : '';
 
-  // Validation
   if (!username || !password) {
-    errEl.textContent = 'Please fill in both username and password.';
+    errEl.textContent = 'Please fill in all fields.';
     errEl.removeAttribute('hidden');
     return;
   }
@@ -1105,83 +1075,51 @@ document.getElementById('authSubmit').addEventListener('click', async () => {
     return;
   }
 
-  const hash = await hashPassword(password);
-  const users = Store.get('users');
+  const btn = document.getElementById('authSubmit');
+  btn.disabled = true;
+  btn.textContent = isRegisterMode ? 'Creating account...' : 'Signing in...';
 
   if (isRegisterMode) {
-    // Check username is not already taken (case-insensitive)
-    const taken = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-    if (taken) {
-      errEl.textContent = 'That username is already taken. Please choose a different one.';
+    if (!email || !email.includes('@')) {
+      errEl.textContent = 'Please enter a valid email address.';
       errEl.removeAttribute('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Create Account';
       return;
     }
 
-    const joinedStr = new Date().toISOString().split('T')[0];
+    const { error } = await Auth.signUp(username, email, password);
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
 
-    if (sbClient) {
-      const { error } = await sbClient.from('users').insert([{ 
-        username: username, 
-        role: 'member', 
-        joined: joinedStr,
-        passwordHash: hash
-      }]);
-
-      if (error) {
-        console.error("Supabase Sign Up Error:", error);
-        errEl.textContent = "Database Error: " + error.message;
-        errEl.removeAttribute('hidden');
-        return; // Stop here if DB fails
-      }
-    } else {
-        errEl.textContent = "Supabase connection is offline. Cannot register.";
-        errEl.removeAttribute('hidden');
-        return;
+    if (error) {
+      authAttempts++;
+      if (authAttempts >= 5) { authLockUntil = Date.now() + 30000; authAttempts = 0; errEl.textContent = 'Too many failed attempts. Please wait 30 seconds.'; }
+      else { errEl.textContent = error.message; }
+      errEl.removeAttribute('hidden');
+      return;
     }
-
-    // Since it successfully inserted into Supabase, update the local cache only for the current session.
-    // We do NOT need to push to store anymore, but we must update local state so they can use the app right now.
-    const newUser = {
-      id: username, // using username as unique identifier since ID column doesn't exist
-      username,
-      passwordHash: hash,
-      role: 'member',
-      joined: joinedStr,
-    };
-    users.push(newUser);
-    Store.set('users', users);
-    Store.set('session', { userId: newUser.id, username: newUser.username, role: newUser.role });
     addAuditLog('User registered', 'system', username);
 
   } else {
-    // Sign in
-    const user = users.find(
-      u => u.username.toLowerCase() === username.toLowerCase() && (u.passwordHash === hash || !u.passwordHash)
-    );
+    const { error } = await Auth.signIn(username, password);
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
 
-    if (!user) {
-      // Increment rate limit counter on failed login
+    if (error) {
       authAttempts++;
-      if (authAttempts >= 5) {
-        authLockUntil = Date.now() + 30000;
-        authAttempts = 0;
-        errEl.textContent = 'Too many failed attempts. Please wait 30 seconds.';
-      } else {
-        errEl.textContent = `Incorrect username or password. (${5 - authAttempts} attempt${5 - authAttempts !== 1 ? 's' : ''} remaining)`;
-      }
+      if (authAttempts >= 5) { authLockUntil = Date.now() + 30000; authAttempts = 0; errEl.textContent = 'Too many failed attempts. Please wait 30 seconds.'; }
+      else { errEl.textContent = `Incorrect username or password. (${5 - authAttempts} attempt${5 - authAttempts !== 1 ? 's' : ''} remaining)`; }
       errEl.removeAttribute('hidden');
       return;
     }
-
-    // Reset rate limit on success
     authAttempts = 0;
-    Store.set('session', { userId: user.id, username: user.username, role: user.role });
-    addAuditLog('User signed in', user.username, user.username);
+    addAuditLog('User signed in', username, username);
   }
 
-  // Clear fields and close
   document.getElementById('authUsername').value = '';
   document.getElementById('authPassword').value = '';
+  if (document.getElementById('authEmail')) document.getElementById('authEmail').value = '';
   closeModal('authModal');
   updateNavForSession();
   renderForum();
@@ -1669,13 +1607,13 @@ document.getElementById('reportSubmitBtn')?.addEventListener('click', () => {
 /* ─────────────────────────────────────────────
    ADMIN PORTAL
 ───────────────────────────────────────────── */
-const ADMIN_CREDS = { 'Owner': 'owner123', 'AdminUser': 'admin456' };
-// In production these would be server-verified. Demo hashes stored client-side.
-
 const openAdminAuth = () => {
-  const session = Store.get('session');
-  if (session && ['owner', 'admin', 'staff'].includes(session.role)) {
-    Store.set('adminSession', { userId: session.username, username: session.username, role: session.role });
+  const adminSession = Store.get('adminSession');
+  const profile = Auth.getProfile();
+  if (adminSession && ['owner', 'admin', 'staff'].includes(adminSession.role)) {
+    openAdminPortal();
+  } else if (profile && ['owner', 'admin', 'staff'].includes(profile.role)) {
+    Store.set('adminSession', { userId: profile.id, username: profile.username, role: profile.role });
     openAdminPortal();
   } else {
     openModal('adminAuthModal');
@@ -1691,14 +1629,21 @@ document.getElementById('adminAuthSubmit').addEventListener('click', async () =>
   const errEl = document.getElementById('adminAuthError');
   errEl.setAttribute('hidden', '');
 
-  const users = Store.get('users');
-  const hash = await hashPassword(password);
-  const user = users.find(u => u.username === username && (u.passwordHash === hash || !u.passwordHash) && ['owner', 'admin', 'staff'].includes(u.role));
+  if (!sbClient) { errEl.textContent = 'Connection unavailable.'; errEl.removeAttribute('hidden'); return; }
 
-  if (!user) { errEl.textContent = 'Invalid credentials or insufficient permissions.'; errEl.removeAttribute('hidden'); return; }
+  const { error } = await Auth.signIn(username, password);
+  if (error) { errEl.textContent = 'Invalid credentials.'; errEl.removeAttribute('hidden'); return; }
 
-  Store.set('adminSession', { userId: user.id, username: user.username, role: user.role });
-  addAuditLog('Admin login', user.username, 'portal');
+  const profile = Auth.getProfile();
+  if (!profile || !['owner', 'admin', 'staff'].includes(profile.role)) {
+    errEl.textContent = 'Invalid credentials or insufficient permissions.';
+    errEl.removeAttribute('hidden');
+    await sbClient.auth.signOut();
+    return;
+  }
+
+  Store.set('adminSession', { userId: profile.id, username: profile.username, role: profile.role });
+  addAuditLog('Admin login', profile.username, 'portal');
   closeModal('adminAuthModal');
   openAdminPortal();
 });
@@ -2386,7 +2331,7 @@ document.getElementById('saveProfileDisplayBtn')?.addEventListener('click', () =
   me.profilePicture = newB64 || null;
 
   Store.set('users', users);
-  if (sbClient) sbClient.from('users').update({profilePicture: me.profilePicture, displayName: me.displayName, bio: me.bio, youtube: me.youtube, discord: me.discord}).eq('username', me.username);
+  if (sbClient) sbClient.from('users').update({profilePicture: me.profilePicture, displayName: me.displayName, bio: me.bio, youtube: me.youtube, discord: me.discord}).eq('id', me.id);
   updateNavForSession();
   renderForum();
 
@@ -2437,18 +2382,20 @@ document.getElementById('savePasswordBtn')?.addEventListener('click', async () =
   }
 
   const session = Store.get('session');
-  const users = Store.get('users');
-  const me = users.find(u => u.username === session.username);
+  if (!session || !sbClient) return;
 
-  const currHash = await hashPassword(currPass);
-  if (me.passwordHash !== currHash) {
+  // Re-verify current password before allowing the change
+  const { error: reAuthError } = await Auth.signIn(session.username, currPass);
+  if (reAuthError) {
     if (err) { err.textContent = 'Current password is incorrect.'; err.removeAttribute('hidden'); }
     return;
   }
 
-  me.passwordHash = await hashPassword(newPass);
-  Store.set('users', users);
-  if (sbClient) sbClient.from('users').update({passwordHash: me.passwordHash}).eq('username', session.username);
+  const { error: updateError } = await sbClient.auth.updateUser({ password: newPass });
+  if (updateError) {
+    if (err) { err.textContent = 'Error updating password: ' + updateError.message; err.removeAttribute('hidden'); }
+    return;
+  }
 
   if (succ) { succ.removeAttribute('hidden'); setTimeout(() => { succ.setAttribute('hidden', ''); }, 3000); }
   document.getElementById('profileCurrentPass').value = '';
@@ -2519,3 +2466,36 @@ window.addEventListener('ps_db_updated', (e) => {
     if (typeof renderAdminUsers === 'function' && !document.getElementById('adminModal').hasAttribute('hidden')) renderAdminUsers();
   }
 });
+
+/* ─────────────────────────────────────────────
+   PASSWORD VISIBILITY TOGGLE
+   Auto-attaches a show/hide eye button to every
+   input[type="password"] on the page.
+───────────────────────────────────────────── */
+const _eyeShow = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const _eyeHide = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+
+document.querySelectorAll('input[type="password"]').forEach(input => {
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:relative;width:100%;';
+  input.parentNode.insertBefore(wrapper, input);
+  wrapper.appendChild(input);
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.setAttribute('aria-label', 'Toggle password visibility');
+  toggle.style.cssText = 'position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--mid);padding:0;line-height:0;';
+  toggle.innerHTML = _eyeShow;
+  wrapper.appendChild(toggle);
+
+  toggle.addEventListener('click', () => {
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    toggle.innerHTML = show ? _eyeHide : _eyeShow;
+    toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    input.focus();
+  });
+});
+
+// Initialise Supabase Auth — restores existing session and listens for auth state changes
+if (sbClient) Auth.init();
