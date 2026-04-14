@@ -1179,6 +1179,21 @@ const updateNavForSession = () => {
 updateNavForSession();
 
 /* ─────────────────────────────────────────────
+   POST IMAGE BUCKET HELPER
+───────────────────────────────────────────── */
+async function deletePostImageFromBucket(imageUrl) {
+  if (!sbClient || !imageUrl || imageUrl.startsWith('data:')) return;
+  try {
+    const url = new URL(imageUrl);
+    const parts = url.pathname.split('/post-images/');
+    if (parts.length < 2) return;
+    await sbClient.storage.from('post-images').remove([parts[1]]);
+  } catch (e) {
+    console.error('Failed to delete post image from bucket:', e);
+  }
+}
+
+/* ─────────────────────────────────────────────
    NEW POST
 ───────────────────────────────────────────── */
 document.getElementById('postSubmit').addEventListener('click', async () => {
@@ -1195,7 +1210,7 @@ document.getElementById('postSubmit').addEventListener('click', async () => {
   if (!title || !body) { errEl.textContent = 'Please fill in all fields.'; errEl.removeAttribute('hidden'); return; }
   if (title.length < 5) { errEl.textContent = 'Title must be at least 5 characters.'; errEl.removeAttribute('hidden'); return; }
 
-  let imageBase64 = null;
+  let imageUrl = null;
   if (imageInput && imageInput.files && imageInput.files[0]) {
     const file = imageInput.files[0];
     if (file.size > 2 * 1024 * 1024) {
@@ -1206,7 +1221,7 @@ document.getElementById('postSubmit').addEventListener('click', async () => {
     const btn = document.getElementById('postSubmit');
     btn.textContent = 'Uploading...';
     btn.disabled = true;
-    const compressImageBeforeBase64 = (f, maxWidth, maxHeight, quality) => {
+    const compressImageToBlob = (f, maxWidth, maxHeight, quality) => {
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.readAsDataURL(f);
@@ -1216,22 +1231,37 @@ document.getElementById('postSubmit').addEventListener('click', async () => {
           img.onload = () => {
             const canvas = document.createElement('canvas');
             let width = img.width, height = img.height;
-            if (width > height) { if (width > maxWidth) { height = Math.round(height *= maxWidth / width); width = maxWidth; } } 
+            if (width > height) { if (width > maxWidth) { height = Math.round(height *= maxWidth / width); width = maxWidth; } }
             else { if (height > maxHeight) { width = Math.round(width *= maxHeight / height); height = maxHeight; } }
             canvas.width = width; canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', quality));
+            canvas.toBlob(resolve, 'image/jpeg', quality);
           };
         };
       });
     };
-    imageBase64 = await compressImageBeforeBase64(file, 800, 800, 0.6);
+    const compressedBlob = await compressImageToBlob(file, 800, 800, 0.6);
+    if (sbClient) {
+      const fileName = `${session.username}_${Date.now()}.jpg`;
+      const { error: uploadError } = await sbClient.storage
+        .from('post-images')
+        .upload(fileName, compressedBlob, { contentType: 'image/jpeg', upsert: false });
+      if (uploadError) {
+        errEl.textContent = 'Image upload failed: ' + uploadError.message;
+        errEl.removeAttribute('hidden');
+        btn.textContent = 'Publish Post';
+        btn.disabled = false;
+        return;
+      }
+      const { data: urlData } = sbClient.storage.from('post-images').getPublicUrl(fileName);
+      imageUrl = urlData.publicUrl;
+    }
     btn.textContent = 'Publish Post';
     btn.disabled = false;
   }
 
-  const newPost = { id: 'p' + Date.now(), userId: session.username, category, title, body, image: imageBase64, likes: 0, comments: 0, likedBy: [], date: new Date().toISOString() };
+  const newPost = { id: 'p' + Date.now(), userId: session.username, category, title, body, image: imageUrl, likes: 0, comments: 0, likedBy: [], date: new Date().toISOString() };
   const newPostDB = { id: newPost.id, userId: newPost.userId, category: newPost.category, title: newPost.title, content: newPost.body, image: newPost.image, likes: 0, commentsCount: 0, likedBy: [], created_at: newPost.date };
   
   if (sbClient) {
@@ -1548,6 +1578,7 @@ const openViewPost = (postId) => {
     document.getElementById('deletePostBtn')?.addEventListener('click', async () => {
       const confirmed = await customConfirm('Are you certain you want to permanently delete this post?');
       if (!confirmed) return;
+      await deletePostImageFromBucket(post.image);
       let allPosts = Store.get('posts');
       allPosts = allPosts.filter(p => p.id !== postId);
       Store.set('posts', allPosts);
@@ -1765,9 +1796,10 @@ const renderAdminPanel = (panel) => {
         </table></div>
       `;
       main.querySelectorAll('[data-delete-post]').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           if (!confirm('Delete this post?')) return;
           const targetPost = Store.get('posts').find(p => p.id === btn.dataset.deletePost);
+          await deletePostImageFromBucket(targetPost?.image);
           const postsArr = Store.get('posts').filter(p => p.id !== btn.dataset.deletePost);
           Store.set('posts', postsArr);
           addAuditLog('Forum post deleted', session.username, btn.dataset.deletePost);
@@ -1830,6 +1862,7 @@ const renderAdminPanel = (panel) => {
           const rid = btn.dataset.reportId;
 
           const targetPost = Store.get('posts').find(p => p.id === pid);
+          await deletePostImageFromBucket(targetPost?.image);
           if(sbClient) await sbClient.from('posts').delete().eq('id', pid); else Store.set('posts', Store.get('posts').filter(p => p.id !== pid));
           Store.set('reports', Store.get('reports').filter(r => r.id !== rid));
           if(sbClient) sbClient.from('reports').delete().eq('id', rid);
