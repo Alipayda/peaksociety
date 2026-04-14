@@ -4,7 +4,8 @@
   "description": "Peak Society - YouTube Shorts Automation Community",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "echo Build complete — static site, no bundler needed."
   },
   "dependencies": {
     "dotenv": "^17.4.2"
